@@ -12,6 +12,24 @@ it('returns the html of a public page', function () {
     expect(app(UrlFetchService::class)->fetchHtml('https://example.com/'))->toBe('<html>Hallo</html>');
 });
 
+it('rejects a host when only one of its addresses is private', function () {
+    $this->mock(DnsResolver::class)->shouldReceive('resolveIpAddresses')->andReturn(['93.184.215.14', '10.0.0.5']);
+    Http::fake();
+
+    expect(fn () => app(UrlFetchService::class)->fetchHtml('https://example.com/'))
+        ->toThrow(UrlFetchException::class, 'Diese Adresse zeigt auf ein internes Netz.');
+    Http::assertNothingSent();
+});
+
+it('rejects an ip address in the url without asking dns', function () {
+    $this->mock(DnsResolver::class)->shouldNotReceive('resolveIpAddresses');
+    Http::fake();
+
+    expect(fn () => app(UrlFetchService::class)->fetchHtml('http://127.0.0.1/'))
+        ->toThrow(UrlFetchException::class, 'Diese Adresse zeigt auf ein internes Netz.');
+    Http::assertNothingSent();
+});
+
 it('rejects a response that is not html', function () {
     $this->mock(DnsResolver::class)->shouldReceive('resolveIpAddresses')->andReturn(['93.184.215.14']);
     Http::fake(['example.com/*' => Http::response('%PDF-1.7', 200, ['Content-Type' => 'application/pdf'])]);
