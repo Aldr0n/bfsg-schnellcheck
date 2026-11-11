@@ -39,3 +39,30 @@ it('rejects a host that resolves to an internal network', function (string $url,
     'localhost' => ['http://localhost/', '127.0.0.1'],
     'private network' => ['https://intranet.example.com/', '10.0.0.5'],
 ]);
+
+it('rejects a redirect to a private ip', function () {
+    $this->mock(DnsResolver::class)->shouldReceive('resolveIpAddresses')->andReturnUsing(fn (string $host) => $host === 'intranet.example.net' ? ['10.0.0.5'] : ['93.184.215.14']);
+    Http::fake(['example.com/*' => Http::response('', 302, ['Location' => 'http://intranet.example.net/admin'])]);
+
+    expect(fn () => app(UrlFetchService::class)->fetchHtml('https://example.com/'))
+        ->toThrow(UrlFetchException::class, 'Diese Adresse zeigt auf ein internes Netz.');
+    Http::assertSentCount(1);
+});
+
+it('follows a relative redirect to the final page', function () {
+    $this->mock(DnsResolver::class)->shouldReceive('resolveIpAddresses')->andReturn(['93.184.215.14']);
+    Http::fake([
+        'example.com/old' => Http::response('', 301, ['Location' => '/new']),
+        'example.com/new' => Http::response('<html>Neu</html>', 200),
+    ]);
+
+    expect(app(UrlFetchService::class)->fetchHtml('https://example.com/old'))->toBe('<html>Neu</html>');
+});
+
+it('gives up after more than five redirects', function () {
+    $this->mock(DnsResolver::class)->shouldReceive('resolveIpAddresses')->andReturn(['93.184.215.14']);
+    Http::fake(['example.com/*' => Http::response('', 302, ['Location' => '/again'])]);
+
+    expect(fn () => app(UrlFetchService::class)->fetchHtml('https://example.com/'))
+        ->toThrow(UrlFetchException::class, 'Die Adresse leitet zu oft weiter.');
+});
