@@ -7,6 +7,7 @@ use App\Support\DnsResolver;
 use GuzzleHttp\Exception\TooManyRedirectsException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Psr\Http\Message\RequestInterface;
 use Throwable;
@@ -22,7 +23,7 @@ class UrlFetchService
     public function __construct(private readonly DnsResolver $dnsResolver) {}
 
     /**
-     * The body of the page at the URL. Only public http(s) addresses are fetched,
+     * The body of the HTML page at the URL. Only public http(s) addresses are fetched,
      * and every redirect target is checked like the first URL. The request is
      * aborted after a timeout or once the body exceeds the size limit.
      *
@@ -53,6 +54,12 @@ class UrlFetchService
 
         if (! $response->successful()) {
             throw new UrlFetchException("Die Seite antwortet mit Status {$response->status()}.");
+        }
+
+        $mediaType = Str::lower(trim(Str::before($response->header('Content-Type'), ';')));
+
+        if (! in_array($mediaType, ['text/html', 'application/xhtml+xml'], true)) {
+            throw new UrlFetchException('Unter dieser Adresse liegt keine HTML-Seite.');
         }
 
         return $response->body();
