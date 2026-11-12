@@ -4,28 +4,34 @@ namespace App\Services;
 
 use App\Exceptions\UrlFetchException;
 use App\Support\DnsResolver;
+use GuzzleHttp\Exception\TooManyRedirectsException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use InvalidArgumentException;
 use Psr\Http\Message\RequestInterface;
+use Throwable;
 
 class UrlFetchService
 {
+    private const MAX_REDIRECTS = 5;
+
     public function __construct(private readonly DnsResolver $dnsResolver) {}
 
     /**
-     * The body of the page at the URL. Only public http(s) addresses are fetched.
+     * The body of the page at the URL. Only public http(s) addresses are fetched,
+     * and every redirect target is checked like the first URL.
      *
      * @throws UrlFetchException
      */
     public function fetchHtml(string $url): string
     {
         try {
-            $response = Http::withoutRedirecting()
-                ->withMiddleware($this->pinPublicIpAddressMiddleware())
+            // The middleware sits below Guzzle's redirect handling, so it runs for every hop.
+            $response = Http::withMiddleware($this->pinPublicIpAddressMiddleware())
+                ->withOptions(['allow_redirects' => ['max' => self::MAX_REDIRECTS]])
                 ->get($url);
-        } catch (ConnectionException) {
-            throw new UrlFetchException('Die Seite ist nicht erreichbar.');
+        } catch (ConnectionException $exception) {
+            throw $this->urlFetchExceptionFor($exception);
         } catch (InvalidArgumentException) {
             // Guzzle rejects an unparseable URL before any middleware runs.
             throw new UrlFetchException('Die Adresse ist ungültig.');
@@ -36,6 +42,23 @@ class UrlFetchService
         }
 
         return $response->body();
+    }
+
+    /**
+     * The exception to throw for a failed request: the one Guzzle wrapped somewhere in the chain,
+     * otherwise a generic one.
+     */
+    private function urlFetchExceptionFor(Throwable $exception): UrlFetchException
+    {
+        if ($exception instanceof TooManyRedirectsException) {
+            return new UrlFetchException('Die Adresse leitet zu oft weiter.');
+        }
+
+        $previous = $exception->getPrevious();
+
+        return $previous === null
+            ? new UrlFetchException('Die Seite ist nicht erreichbar.')
+            : $this->urlFetchExceptionFor($previous);
     }
 
     /**
