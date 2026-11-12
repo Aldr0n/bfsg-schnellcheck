@@ -4,12 +4,25 @@ namespace App\Services;
 
 use App\Enums\AuditStatus;
 use App\Exceptions\UrlFetchException;
+use App\Jobs\RunAudit;
 use App\Models\Audit;
 use Illuminate\Support\Facades\DB;
 
 class AuditService
 {
     public function __construct(private readonly UrlFetchService $urlFetchService, private readonly AccessibilityCheckService $accessibilityCheckService) {}
+
+    /**
+     * Stores a pending audit and queues its run.
+     */
+    public function start(string $url): Audit
+    {
+        $audit = Audit::create(['url' => $url, 'status' => AuditStatus::Pending]);
+
+        RunAudit::dispatch($audit);
+
+        return $audit;
+    }
 
     /**
      * Fetches the page, stores the findings and ends as done, or as failed with the reason of the failed fetch.
