@@ -15,11 +15,16 @@ class UrlFetchService
 {
     private const MAX_REDIRECTS = 5;
 
+    private const TIMEOUT_SECONDS = 10;
+
+    private const MAX_BODY_BYTES = 5 * 1024 * 1024;
+
     public function __construct(private readonly DnsResolver $dnsResolver) {}
 
     /**
      * The body of the page at the URL. Only public http(s) addresses are fetched,
-     * and every redirect target is checked like the first URL.
+     * and every redirect target is checked like the first URL. The request is
+     * aborted after a timeout or once the body exceeds the size limit.
      *
      * @throws UrlFetchException
      */
@@ -28,7 +33,16 @@ class UrlFetchService
         try {
             // The middleware sits below Guzzle's redirect handling, so it runs for every hop.
             $response = Http::withMiddleware($this->pinPublicIpAddressMiddleware())
-                ->withOptions(['allow_redirects' => ['max' => self::MAX_REDIRECTS]])
+                ->timeout(self::TIMEOUT_SECONDS)
+                ->withOptions([
+                    'allow_redirects' => ['max' => self::MAX_REDIRECTS],
+                    // Guzzle does not allow CURLOPT_MAXFILESIZE_LARGE, so the limit is enforced here.
+                    'progress' => function (int $downloadTotal, int $downloadedBytes) {
+                        if ($downloadTotal > self::MAX_BODY_BYTES || $downloadedBytes > self::MAX_BODY_BYTES) {
+                            throw new UrlFetchException('Die Seite ist größer als 5 MB.');
+                        }
+                    },
+                ])
                 ->get($url);
         } catch (ConnectionException $exception) {
             throw $this->urlFetchExceptionFor($exception);
@@ -50,6 +64,10 @@ class UrlFetchService
      */
     private function urlFetchExceptionFor(Throwable $exception): UrlFetchException
     {
+        if ($exception instanceof UrlFetchException) {
+            return $exception;
+        }
+
         if ($exception instanceof TooManyRedirectsException) {
             return new UrlFetchException('Die Adresse leitet zu oft weiter.');
         }
