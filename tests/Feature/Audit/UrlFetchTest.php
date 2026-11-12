@@ -5,11 +5,19 @@ use App\Services\UrlFetchService;
 use App\Support\DnsResolver;
 use Illuminate\Support\Facades\Http;
 
-it('returns the body of a public page', function () {
+it('returns the html of a public page', function () {
     $this->mock(DnsResolver::class)->shouldReceive('resolveIpAddresses')->andReturn(['93.184.215.14']);
-    Http::fake(['example.com/*' => Http::response('<html>Hallo</html>', 200)]);
+    Http::fake(['example.com/*' => Http::response('<html>Hallo</html>', 200, ['Content-Type' => 'text/html; charset=utf-8'])]);
 
     expect(app(UrlFetchService::class)->fetchHtml('https://example.com/'))->toBe('<html>Hallo</html>');
+});
+
+it('rejects a response that is not html', function () {
+    $this->mock(DnsResolver::class)->shouldReceive('resolveIpAddresses')->andReturn(['93.184.215.14']);
+    Http::fake(['example.com/*' => Http::response('%PDF-1.7', 200, ['Content-Type' => 'application/pdf'])]);
+
+    expect(fn () => app(UrlFetchService::class)->fetchHtml('https://example.com/report.pdf'))
+        ->toThrow(UrlFetchException::class, 'Unter dieser Adresse liegt keine HTML-Seite.');
 });
 
 it('rejects schemes other than http and https', function () {
@@ -53,7 +61,7 @@ it('follows a relative redirect to the final page', function () {
     $this->mock(DnsResolver::class)->shouldReceive('resolveIpAddresses')->andReturn(['93.184.215.14']);
     Http::fake([
         'example.com/old' => Http::response('', 301, ['Location' => '/new']),
-        'example.com/new' => Http::response('<html>Neu</html>', 200),
+        'example.com/new' => Http::response('<html>Neu</html>', 200, ['Content-Type' => 'text/html']),
     ]);
 
     expect(app(UrlFetchService::class)->fetchHtml('https://example.com/old'))->toBe('<html>Neu</html>');
