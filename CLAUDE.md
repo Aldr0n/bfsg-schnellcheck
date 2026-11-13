@@ -47,6 +47,10 @@ Pint runs before every commit. Before a PR, `lerd composer ci:check` passes, exa
 
 Every PR is checked against these rules. What a tool can check, the tool checks: Pint for PHP, `npm run check` and `tsc` for TypeScript. Some of the examples come from other projects and only show the rule.
 
+### Laravel first
+
+If Laravel already has a tool, helper or pattern for a problem, that is the first approach. A custom solution comes only when the Laravel way doesn't fit, and the reason goes into a code comment or the PR. Example: the HTTP client follows redirects itself, and a Guzzle middleware registered with `Http::withMiddleware()` checks every hop. There is no custom loop over the redirects.
+
 ### Language
 
 Under the hood, everything is English: classes, methods, variables, enum cases and their values, columns, route names, commits and code comments. Only what users see is German: labels, texts, mails, error messages, URL paths and query parameters. So an enum is `Role::Warehouse` with `label()` returning "Lager", not `Role::Lager`.
