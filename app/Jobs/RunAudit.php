@@ -14,7 +14,8 @@ class RunAudit implements ShouldQueue
 
     public int $tries = 1;
 
-    public int $timeout = 90;
+    // Must stay below the worker's 60 s timeout and the queue's retry_after, or failed() never runs.
+    public int $timeout = 50;
 
     public bool $failOnTimeout = true;
 
