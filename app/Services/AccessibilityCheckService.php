@@ -15,70 +15,94 @@ class AccessibilityCheckService
     private const INPUT_TYPES_WITHOUT_LABEL = ['hidden', 'submit', 'reset', 'button'];
 
     /**
-     * The violations of all rules in the HTML, as unsaved findings.
+     * Parses the HTML once and runs every rule on it. The findings are unsaved, the checked counts are keyed by the rule value.
+     * Language and title are checked once per page.
      *
-     * @return list<Finding>
+     * @return array{findings: array<int, Finding>, checkedCounts: array<string, int>}
      */
-    public function findViolations(string $html): array
+    public function checkHtml(string $html): array
     {
         $document = HTMLDocument::createFromString($html, LIBXML_NOERROR);
 
+        $results = collect(AccessibilityRule::cases())
+            ->mapWithKeys(fn (AccessibilityRule $rule) => [
+                $rule->value => $this->checkRule($rule, $document),
+            ]);
+
         return [
-            ...$this->findImagesWithoutAlt($document),
-            ...$this->findMissingDocumentLanguage($document),
-            ...$this->findMissingDocumentTitle($document),
-            ...$this->findUnlabelledFormFields($document),
-            ...$this->findLinksWithoutName($document),
+            'findings' => $results->flatMap(fn (array $result) => $result['findings'])->all(),
+            'checkedCounts' => $results->map(fn (array $result) => $result['checkedCount'])->all(),
         ];
     }
 
     /**
-     * @return list<Finding>
+     * @return array{checkedCount: int, findings: list<Finding>}
      */
-    private function findImagesWithoutAlt(HTMLDocument $document): array
+    private function checkRule(AccessibilityRule $rule, HTMLDocument $document): array
     {
-        $findings = [];
-
-        foreach ($document->querySelectorAll('img:not([alt]):not([aria-hidden="true"]):not([role="presentation"]):not([role="none"])') as $image) {
-            $findings[] = $this->makeFinding(AccessibilityRule::ImageAlt, $document->saveHtml($image));
-        }
-
-        return $findings;
+        return match ($rule) {
+            AccessibilityRule::ImageAlt => $this->checkImages($document),
+            AccessibilityRule::DocumentLanguage => $this->checkDocumentLanguage($document),
+            AccessibilityRule::DocumentTitle => $this->checkDocumentTitle($document),
+            AccessibilityRule::FormLabel => $this->checkFormFields($document),
+            AccessibilityRule::LinkText => $this->checkLinks($document),
+        };
     }
 
     /**
-     * @return list<Finding>
+     * Images need an alt attribute, except the ones hidden from assistive technology.
+     *
+     * @return array{checkedCount: int, findings: list<Finding>}
      */
-    private function findMissingDocumentLanguage(HTMLDocument $document): array
+    private function checkImages(HTMLDocument $document): array
+    {
+        $images = $document->querySelectorAll('img:not([aria-hidden="true"]):not([role="presentation"]):not([role="none"])');
+
+        $findings = [];
+
+        foreach ($images as $image) {
+            if (! $image->hasAttribute('alt')) {
+                $findings[] = $this->makeFinding(AccessibilityRule::ImageAlt, $document->saveHtml($image));
+            }
+        }
+
+        return ['checkedCount' => count($images), 'findings' => $findings];
+    }
+
+    /**
+     * @return array{checkedCount: int, findings: list<Finding>}
+     */
+    private function checkDocumentLanguage(HTMLDocument $document): array
     {
         $root = $document->documentElement;
 
         if ($this->hasFilledAttribute($root, 'lang')) {
-            return [];
+            return ['checkedCount' => 1, 'findings' => []];
         }
 
-        return [$this->makeFinding(AccessibilityRule::DocumentLanguage, $this->openingTag($root))];
+        return ['checkedCount' => 1, 'findings' => [$this->makeFinding(AccessibilityRule::DocumentLanguage, $this->openingTag($root))]];
     }
 
     /**
-     * @return list<Finding>
+     * @return array{checkedCount: int, findings: list<Finding>}
      */
-    private function findMissingDocumentTitle(HTMLDocument $document): array
+    private function checkDocumentTitle(HTMLDocument $document): array
     {
         if ($document->title !== '') {
-            return [];
+            return ['checkedCount' => 1, 'findings' => []];
         }
 
-        return [$this->makeFinding(AccessibilityRule::DocumentTitle, $this->openingTag($document->head))];
+        return ['checkedCount' => 1, 'findings' => [$this->makeFinding(AccessibilityRule::DocumentTitle, $this->openingTag($document->head))]];
     }
 
     /**
-     * @return list<Finding>
+     * @return array{checkedCount: int, findings: list<Finding>}
      */
-    private function findUnlabelledFormFields(HTMLDocument $document): array
+    private function checkFormFields(HTMLDocument $document): array
     {
         $labelledIds = collect($document->querySelectorAll('label[for]'))->map(fn (Element $label) => $label->getAttribute('for'));
 
+        $checkedCount = 0;
         $findings = [];
 
         foreach ($document->querySelectorAll('input, select, textarea') as $field) {
@@ -87,6 +111,8 @@ class AccessibilityCheckService
             if ($field->tagName === 'INPUT' && in_array($type, self::INPUT_TYPES_WITHOUT_LABEL, true)) {
                 continue;
             }
+
+            $checkedCount++;
 
             $hasAccessibleName = $this->hasFilledAttribute($field, 'aria-label')
                 || $this->hasFilledAttribute($field, 'aria-labelledby')
@@ -99,17 +125,19 @@ class AccessibilityCheckService
             }
         }
 
-        return $findings;
+        return ['checkedCount' => $checkedCount, 'findings' => $findings];
     }
 
     /**
-     * @return list<Finding>
+     * @return array{checkedCount: int, findings: list<Finding>}
      */
-    private function findLinksWithoutName(HTMLDocument $document): array
+    private function checkLinks(HTMLDocument $document): array
     {
+        $links = $document->querySelectorAll('a[href]');
+
         $findings = [];
 
-        foreach ($document->querySelectorAll('a[href]') as $link) {
+        foreach ($links as $link) {
             $hasAccessibleName = filled($link->textContent)
                 || $this->hasFilledAttribute($link, 'aria-label')
                 || $this->hasFilledAttribute($link, 'aria-labelledby')
@@ -121,7 +149,7 @@ class AccessibilityCheckService
             }
         }
 
-        return $findings;
+        return ['checkedCount' => count($links), 'findings' => $findings];
     }
 
     /**

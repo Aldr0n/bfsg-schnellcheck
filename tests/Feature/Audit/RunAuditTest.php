@@ -121,6 +121,26 @@ it('ends html without violations as done without findings', function (string $ht
         ->and($audit->findings)->toBeEmpty();
 })->with('html without violations');
 
+it('stores how many elements each rule checked', function () {
+    $html = '<!doctype html><html lang="de"><head><title>Start</title></head><body>'
+        .'<img src="a.png" alt="A"><img src="b.png"><img src="c.png" aria-hidden="true">'
+        .'<label for="name">Name</label><input id="name"><input type="text" id="other"><input type="hidden" name="token">'
+        .'<a href="/a">A</a><a href="/b">B</a><a href="/c"></a><a name="anchor"></a>'
+        .'</body></html>';
+    Http::fake(['example.com/*' => Http::response($html, 200, ['Content-Type' => 'text/html'])]);
+    $audit = Audit::factory()->create(['url' => 'https://example.com/']);
+
+    RunAudit::dispatchSync($audit);
+
+    expect($audit->refresh()->checked_counts)->toBe([
+        'image_alt' => 2,
+        'document_language' => 1,
+        'document_title' => 1,
+        'form_label' => 2,
+        'link_text' => 3,
+    ]);
+});
+
 it('ends as failed with the message of the failed fetch', function () {
     $audit = Audit::factory()->create(['url' => 'http://10.0.0.5/']);
 

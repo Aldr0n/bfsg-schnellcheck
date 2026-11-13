@@ -16,10 +16,11 @@ use Illuminate\Support\Carbon;
  * @property string $url
  * @property AuditStatus $status
  * @property string|null $error_message
+ * @property array<string, int>|null $checked_counts Checked elements per rule value, null until the audit is done and for audits stored before the counts existed.
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['url', 'status', 'error_message'])]
+#[Fillable(['url', 'status', 'error_message', 'checked_counts'])]
 class Audit extends Model
 {
     /**
@@ -42,6 +43,7 @@ class Audit extends Model
     {
         return [
             'status' => AuditStatus::class,
+            'checked_counts' => 'array',
         ];
     }
 }
