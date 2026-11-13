@@ -1,6 +1,8 @@
 import { Head, Link } from '@inertiajs/react';
+import { useState } from 'react';
 import { AuditPoller } from '@/components/audit-poller';
 import { FindingSnippets } from '@/components/finding-snippets';
+import { RuleRings } from '@/components/rule-rings';
 import {
     Accordion,
     AccordionContent,
@@ -27,7 +29,24 @@ function statusText(audit: Audit): string {
         : 'Die Prüfung ist fertig.';
 }
 
+function findingGroupId(accessibilityRule: string): string {
+    return `findings-${accessibilityRule}`;
+}
+
 export default function Show({ audit }: Props) {
+    const [openRules, setOpenRules] = useState<string[]>([]);
+
+    function showFindings(accessibilityRule: string) {
+        setOpenRules((current) =>
+            current.includes(accessibilityRule)
+                ? current
+                : [...current, accessibilityRule],
+        );
+        document
+            .getElementById(findingGroupId(accessibilityRule))
+            ?.scrollIntoView();
+    }
+
     return (
         <>
             <Head title={`Bericht für ${audit.url}`} />
@@ -67,50 +86,69 @@ export default function Show({ audit }: Props) {
                 )}
 
                 {audit.isFinished && !audit.errorMessage && (
-                    <section
-                        aria-labelledby="findings-heading"
-                        className="flex flex-col gap-4"
-                    >
-                        <h2
-                            id="findings-heading"
-                            className="text-xl font-semibold"
-                        >
-                            Funde
-                        </h2>
-                        {audit.findingGroups.length === 0 ? (
-                            <p>Die fünf Regeln haben nichts gefunden.</p>
-                        ) : (
-                            <Accordion type="multiple">
-                                {audit.findingGroups.map((group) => (
-                                    <AccordionItem
-                                        key={group.accessibilityRule}
-                                        value={group.accessibilityRule}
-                                    >
-                                        <AccordionTrigger>
-                                            <span className="flex items-center gap-2">
-                                                {group.label}
-                                                <Badge variant="outline">
-                                                    {group.snippets.length === 1
-                                                        ? '1 Fund'
-                                                        : `${group.snippets.length} Funde`}
-                                                </Badge>
-                                            </span>
-                                        </AccordionTrigger>
-                                        <AccordionContent className="flex flex-col gap-3">
-                                            <p className="text-muted-foreground">
-                                                WCAG{' '}
-                                                {group.wcagCriteria.join(', ')}
-                                            </p>
-                                            <p>{group.explanation}</p>
-                                            <FindingSnippets
-                                                snippets={group.snippets}
-                                            />
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                ))}
-                            </Accordion>
+                    <>
+                        {audit.ruleSummaries !== null && (
+                            <RuleRings
+                                ruleSummaries={audit.ruleSummaries}
+                                onShowFindings={showFindings}
+                            />
                         )}
-                    </section>
+
+                        <section
+                            aria-labelledby="findings-heading"
+                            className="flex flex-col gap-4"
+                        >
+                            <h2
+                                id="findings-heading"
+                                className="text-xl font-semibold"
+                            >
+                                Funde
+                            </h2>
+                            {audit.findingGroups.length === 0 ? (
+                                <p>Die fünf Regeln haben nichts gefunden.</p>
+                            ) : (
+                                <Accordion
+                                    type="multiple"
+                                    value={openRules}
+                                    onValueChange={setOpenRules}
+                                >
+                                    {audit.findingGroups.map((group) => (
+                                        <AccordionItem
+                                            key={group.accessibilityRule}
+                                            id={findingGroupId(
+                                                group.accessibilityRule,
+                                            )}
+                                            value={group.accessibilityRule}
+                                        >
+                                            <AccordionTrigger>
+                                                <span className="flex items-center gap-2">
+                                                    {group.label}
+                                                    <Badge variant="outline">
+                                                        {group.snippets
+                                                            .length === 1
+                                                            ? '1 Fund'
+                                                            : `${group.snippets.length} Funde`}
+                                                    </Badge>
+                                                </span>
+                                            </AccordionTrigger>
+                                            <AccordionContent className="flex flex-col gap-3">
+                                                <p className="text-muted-foreground">
+                                                    WCAG{' '}
+                                                    {group.wcagCriteria.join(
+                                                        ', ',
+                                                    )}
+                                                </p>
+                                                <p>{group.explanation}</p>
+                                                <FindingSnippets
+                                                    snippets={group.snippets}
+                                                />
+                                            </AccordionContent>
+                                        </AccordionItem>
+                                    ))}
+                                </Accordion>
+                            )}
+                        </section>
+                    </>
                 )}
 
                 <div>
