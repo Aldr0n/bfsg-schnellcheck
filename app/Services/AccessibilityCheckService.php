@@ -95,7 +95,7 @@ class AccessibilityCheckService
                 || $labelledIds->containsStrict($field->getAttribute('id'));
 
             if (! $hasAccessibleName) {
-                $findings[] = $this->makeFinding(AccessibilityRule::FormLabel, $document->saveHtml($field));
+                $findings[] = $this->makeFinding(AccessibilityRule::FormLabel, $this->openingTag($field));
             }
         }
 
@@ -155,6 +155,6 @@ class AccessibilityCheckService
 
     private function makeFinding(AccessibilityRule $rule, string $html): Finding
     {
-        return new Finding(['accessibility_rule' => $rule, 'snippet' => Str::limit($html, self::MAX_SNIPPET_LENGTH)]);
+        return new Finding(['accessibility_rule' => $rule, 'snippet' => Str::limit(Str::squish($html), self::MAX_SNIPPET_LENGTH)]);
     }
 }
