@@ -38,10 +38,20 @@ dataset('html with one violation', [
         '<!doctype html><html lang="de"><head><title>Start</title></head><body><input type="image" src="go.png"></body></html>',
         '<input type="image" src="go.png">',
     ],
+    'select without label' => [
+        AccessibilityRule::FormLabel,
+        '<!doctype html><html lang="de"><head><title>Start</title></head><body><select name="city"><option>Berlin</option><option>Hamburg</option></select></body></html>',
+        '<select name="city">',
+    ],
     'link with only an empty image' => [
         AccessibilityRule::LinkText,
         '<!doctype html><html lang="de"><head><title>Start</title></head><body><a href="/kontakt"><img src="mail.png" alt=""></a></body></html>',
         '<a href="/kontakt"><img src="mail.png" alt=""></a>',
+    ],
+    'link spread over several lines' => [
+        AccessibilityRule::LinkText,
+        "<!doctype html><html lang=\"de\"><head><title>Start</title></head><body><a href=\"/kontakt\">\n    <img src=\"mail.png\" alt=\"\">\n</a></body></html>",
+        '<a href="/kontakt"> <img src="mail.png" alt=""> </a>',
     ],
 ]);
 
