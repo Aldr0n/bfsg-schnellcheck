@@ -25,6 +25,17 @@ it('shows the findings of a finished audit grouped by rule', function () {
             ->where('audit.findingGroups.1.wcagCriteria', ['2.4.4', '4.1.2']));
 });
 
+it('lists the findings in the order of the rules', function () {
+    $audit = Audit::factory()->create(['status' => AuditStatus::Done]);
+    Finding::factory()->for($audit)->create(['accessibility_rule' => AccessibilityRule::DocumentLanguage]);
+    Finding::factory()->for($audit)->create(['accessibility_rule' => AccessibilityRule::ImageAlt]);
+
+    $this->get(route('audits.show', $audit))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('audit.findingGroups.0.accessibilityRule', 'image_alt')
+            ->where('audit.findingGroups.1.accessibilityRule', 'document_language'));
+});
+
 it('shows a summary per rule with counts, status and sentence', function () {
     $audit = Audit::factory()->create([
         'status' => AuditStatus::Done,

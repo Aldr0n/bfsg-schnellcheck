@@ -33,7 +33,7 @@ class AuditResource extends JsonResource
     /**
      * One summary per rule in case order, or null for audits without stored counts.
      *
-     * @return list<array<string, mixed>>|null
+     * @return array<int, array<string, mixed>>|null
      */
     private function ruleSummaries(): ?array
     {
@@ -41,13 +41,15 @@ class AuditResource extends JsonResource
             return null;
         }
 
-        return array_map(fn (AccessibilityRule $rule) => $this->ruleSummary($rule, $this->checked_counts[$rule->value] ?? 0, $this->findingCountOf($rule)), AccessibilityRule::cases());
+        return collect(AccessibilityRule::cases())
+            ->map(fn (AccessibilityRule $rule) => $this->ruleSummary($rule))
+            ->all();
     }
 
     /**
      * The real number of findings of the rule. Audits stored before the counts existed only have their stored findings.
      */
-    private function findingCountOf(AccessibilityRule $rule): int
+    private function findingCount(AccessibilityRule $rule): int
     {
         return $this->finding_counts[$rule->value]
             ?? $this->findings->where('accessibility_rule', $rule)->count();
@@ -56,8 +58,11 @@ class AuditResource extends JsonResource
     /**
      * @return array<string, mixed>
      */
-    private function ruleSummary(AccessibilityRule $rule, int $checkedCount, int $findingCount): array
+    private function ruleSummary(AccessibilityRule $rule): array
     {
+        $checkedCount = $this->checked_counts[$rule->value] ?? 0;
+        $findingCount = $this->findingCount($rule);
+
         return [
             'accessibilityRule' => $rule->value,
             'label' => $rule->label(),
@@ -69,32 +74,31 @@ class AuditResource extends JsonResource
     }
 
     /**
-     * @return list<array<string, mixed>>
+     * One group per rule with findings, in case order like the summaries.
+     *
+     * @return array<int, array<string, mixed>>
      */
     private function findingGroups(): array
     {
-        $groups = [];
-
-        foreach ($this->findings->groupBy('accessibility_rule') as $ruleFindings) {
-            $groups[] = $this->findingGroup($ruleFindings->first()->accessibility_rule, $ruleFindings->pluck('snippet')->all());
-        }
-
-        return $groups;
+        return collect(AccessibilityRule::cases())
+            ->filter(fn (AccessibilityRule $rule) => $this->findings->contains('accessibility_rule', $rule))
+            ->map(fn (AccessibilityRule $rule) => $this->findingGroup($rule))
+            ->values()
+            ->all();
     }
 
     /**
-     * @param  array<mixed>  $snippets
      * @return array<string, mixed>
      */
-    private function findingGroup(AccessibilityRule $rule, array $snippets): array
+    private function findingGroup(AccessibilityRule $rule): array
     {
         return [
             'accessibilityRule' => $rule->value,
             'label' => $rule->label(),
             'wcagCriteria' => $rule->wcagCriteria(),
             'explanation' => $rule->explanation(),
-            'findingCount' => $this->findingCountOf($rule),
-            'snippets' => $snippets,
+            'findingCount' => $this->findingCount($rule),
+            'snippets' => $this->findings->where('accessibility_rule', $rule)->pluck('snippet')->all(),
         ];
     }
 }
