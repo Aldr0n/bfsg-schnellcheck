@@ -12,10 +12,15 @@ enum AuditStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Pending => 'Wartet',
+            self::Pending => 'In der Warteschlange',
             self::Running => 'Läuft',
             self::Done => 'Fertig',
             self::Failed => 'Fehlgeschlagen',
         };
+    }
+
+    public function isFinished(): bool
+    {
+        return in_array($this, [self::Done, self::Failed], true);
     }
 }
