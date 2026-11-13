@@ -43,7 +43,11 @@ class AuditService
 
         DB::transaction(function () use ($audit, $result) {
             $audit->findings()->saveMany($result['findings']);
-            $audit->update(['status' => AuditStatus::Done, 'checked_counts' => $result['checkedCounts']]);
+            $audit->update([
+                'status' => AuditStatus::Done,
+                'checked_counts' => $result['checkedCounts'],
+                'finding_counts' => $result['findingCounts'],
+            ]);
         });
     }
 

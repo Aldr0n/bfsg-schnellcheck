@@ -49,6 +49,30 @@ it('shows a summary per rule with counts, status and sentence', function () {
             ->where('audit.ruleSummaries.4.summarySentence', '4 von 45 Links ohne Text'));
 });
 
+it('shows the real finding count when fewer snippets are stored', function () {
+    $audit = Audit::factory()->create([
+        'status' => AuditStatus::Done,
+        'checked_counts' => ['image_alt' => 80, 'document_language' => 1, 'document_title' => 1, 'form_label' => 0, 'link_text' => 0],
+        'finding_counts' => ['image_alt' => 60, 'document_language' => 0, 'document_title' => 0, 'form_label' => 0, 'link_text' => 0],
+    ]);
+    Finding::factory()->count(2)->for($audit)->create(['accessibility_rule' => AccessibilityRule::ImageAlt]);
+
+    $this->get(route('audits.show', $audit))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('audit.findingGroups.0.snippets', 2)
+            ->where('audit.findingGroups.0.findingCount', 60)
+            ->where('audit.ruleSummaries.0.findingCount', 60)
+            ->where('audit.ruleSummaries.0.summarySentence', '60 von 80 Bildern ohne Alternativtext'));
+});
+
+it('falls back to the stored snippets for the finding count of an audit stored without finding counts', function () {
+    $audit = Audit::factory()->create(['status' => AuditStatus::Done]);
+    Finding::factory()->count(3)->for($audit)->create(['accessibility_rule' => AccessibilityRule::ImageAlt]);
+
+    $this->get(route('audits.show', $audit))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('audit.findingGroups.0.findingCount', 3));
+});
+
 it('shows no rule summaries for an audit stored without checked counts', function () {
     $audit = Audit::factory()->create(['status' => AuditStatus::Done]);
 

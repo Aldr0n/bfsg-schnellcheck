@@ -5,7 +5,6 @@ namespace App\Http\Resources;
 use App\Enums\AccessibilityRule;
 use App\Enums\AccessibilityRuleResult;
 use App\Models\Audit;
-use App\Models\Finding;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -42,14 +41,16 @@ class AuditResource extends JsonResource
             return null;
         }
 
-        $findingCounts = $this->findings->countBy(fn (Finding $finding) => $finding->accessibility_rule->value);
-        $summaries = [];
+        return array_map(fn (AccessibilityRule $rule) => $this->ruleSummary($rule, $this->checked_counts[$rule->value] ?? 0, $this->findingCountOf($rule)), AccessibilityRule::cases());
+    }
 
-        foreach (AccessibilityRule::cases() as $rule) {
-            $summaries[] = $this->ruleSummary($rule, $this->checked_counts[$rule->value] ?? 0, $findingCounts->get($rule->value, 0));
-        }
-
-        return $summaries;
+    /**
+     * The real number of findings of the rule. Audits stored before the counts existed only have their stored findings.
+     */
+    private function findingCountOf(AccessibilityRule $rule): int
+    {
+        return $this->finding_counts[$rule->value]
+            ?? $this->findings->where('accessibility_rule', $rule)->count();
     }
 
     /**
@@ -92,6 +93,7 @@ class AuditResource extends JsonResource
             'label' => $rule->label(),
             'wcagCriteria' => $rule->wcagCriteria(),
             'explanation' => $rule->explanation(),
+            'findingCount' => $this->findingCountOf($rule),
             'snippets' => $snippets,
         ];
     }

@@ -126,10 +126,10 @@ export default function Show({ audit }: Props) {
                                                 <span className="flex items-center gap-2">
                                                     {group.label}
                                                     <Badge variant="outline">
-                                                        {group.snippets
-                                                            .length === 1
+                                                        {group.findingCount ===
+                                                        1
                                                             ? '1 Fund'
-                                                            : `${group.snippets.length} Funde`}
+                                                            : `${group.findingCount} Funde`}
                                                     </Badge>
                                                 </span>
                                             </AccordionTrigger>
@@ -143,6 +143,9 @@ export default function Show({ audit }: Props) {
                                                 <p>{group.explanation}</p>
                                                 <FindingSnippets
                                                     snippets={group.snippets}
+                                                    findingCount={
+                                                        group.findingCount
+                                                    }
                                                 />
                                             </AccordionContent>
                                         </AccordionItem>
