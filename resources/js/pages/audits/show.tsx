@@ -1,5 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
 import { AuditPoller } from '@/components/audit-poller';
+import { FindingSnippets } from '@/components/finding-snippets';
 import {
     Accordion,
     AccordionContent,
@@ -101,22 +102,9 @@ export default function Show({ audit }: Props) {
                                                 {group.wcagCriteria.join(', ')}
                                             </p>
                                             <p>{group.explanation}</p>
-                                            <ul className="flex flex-col gap-2">
-                                                {group.snippets.map(
-                                                    (snippet, index) => (
-                                                        <li key={index}>
-                                                            <pre
-                                                                tabIndex={0}
-                                                                className="overflow-x-auto rounded-md bg-muted p-3 text-xs text-foreground"
-                                                            >
-                                                                <code>
-                                                                    {snippet}
-                                                                </code>
-                                                            </pre>
-                                                        </li>
-                                                    ),
-                                                )}
-                                            </ul>
+                                            <FindingSnippets
+                                                snippets={group.snippets}
+                                            />
                                         </AccordionContent>
                                     </AccordionItem>
                                 ))}
