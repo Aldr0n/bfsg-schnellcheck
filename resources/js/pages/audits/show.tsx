@@ -12,6 +12,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { home } from '@/routes';
 import type { Audit } from '@/types/audit';
 
@@ -24,9 +25,8 @@ function statusText(audit: Audit): string {
         return 'Die Seite wird geprüft …';
     }
 
-    return audit.errorMessage
-        ? 'Die Prüfung ist fehlgeschlagen.'
-        : 'Die Prüfung ist fertig.';
+    // A failed audit is announced by the alert, which has role="alert" itself.
+    return audit.errorMessage ? '' : 'Die Prüfung ist fertig.';
 }
 
 function findingGroupId(accessibilityRule: string): string {
@@ -74,7 +74,9 @@ export default function Show({ audit }: Props) {
                     </AlertDescription>
                 </Alert>
 
-                <p role="status">{statusText(audit)}</p>
+                <p role="status" className={cn(audit.isFinished && 'sr-only')}>
+                    {statusText(audit)}
+                </p>
 
                 {audit.errorMessage && (
                     <Alert variant="destructive">
