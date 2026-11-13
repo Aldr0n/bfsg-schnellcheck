@@ -27,6 +27,6 @@ class RunAudit implements ShouldQueue
 
     public function failed(Throwable $exception): void
     {
-        app(AuditService::class)->markFailed($this->audit, 'Die Prüfung ist fehlgeschlagen.');
+        app(AuditService::class)->markFailed($this->audit, 'Beim Prüfen ist ein unerwarteter Fehler aufgetreten. Versuch es später noch einmal.');
     }
 }
