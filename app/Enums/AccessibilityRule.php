@@ -22,6 +22,33 @@ enum AccessibilityRule: string
     }
 
     /**
+     * One sentence about how the rule went, from the number of checked elements and of findings.
+     */
+    public function summarySentence(int $checkedCount, int $findingCount): string
+    {
+        return match ($this) {
+            self::ImageAlt => $this->sentenceByCount($checkedCount, $findingCount, 'Keine Bilder auf der Seite', 'Das Bild hat einen Alternativtext', 'Das Bild hat keinen Alternativtext', "Alle {$checkedCount} Bilder mit Alternativtext", "{$findingCount} von {$checkedCount} Bildern ohne Alternativtext"),
+            self::FormLabel => $this->sentenceByCount($checkedCount, $findingCount, 'Keine Formularfelder auf der Seite', 'Das Feld ist beschriftet', 'Das Feld ist nicht beschriftet', "Alle {$checkedCount} Felder beschriftet", "{$findingCount} von {$checkedCount} Feldern ohne Beschriftung"),
+            self::LinkText => $this->sentenceByCount($checkedCount, $findingCount, 'Keine Links auf der Seite', 'Der Link hat Text', 'Der Link hat keinen Text', "Alle {$checkedCount} Links mit Text", "{$findingCount} von {$checkedCount} Links ohne Text"),
+            self::DocumentLanguage => $findingCount === 0 ? 'Sprache ist angegeben' : 'Sprachangabe fehlt',
+            self::DocumentTitle => $findingCount === 0 ? 'Seite hat einen Titel' : 'Titel fehlt',
+        };
+    }
+
+    private function sentenceByCount(int $checkedCount, int $findingCount, string $noElementsSentence, string $singlePassedSentence, string $singleFailedSentence, string $allPassedSentence, string $someFailedSentence): string
+    {
+        if ($checkedCount === 0) {
+            return $noElementsSentence;
+        }
+
+        if ($checkedCount === 1) {
+            return $findingCount === 0 ? $singlePassedSentence : $singleFailedSentence;
+        }
+
+        return $findingCount === 0 ? $allPassedSentence : $someFailedSentence;
+    }
+
+    /**
      * The WCAG success criteria the rule belongs to.
      *
      * @return list<string>
