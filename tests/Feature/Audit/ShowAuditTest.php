@@ -25,6 +25,37 @@ it('shows the findings of a finished audit grouped by rule', function () {
             ->where('audit.findingGroups.1.wcagCriteria', ['2.4.4', '4.1.2']));
 });
 
+it('shows a summary per rule with counts, status and sentence', function () {
+    $audit = Audit::factory()->create([
+        'status' => AuditStatus::Done,
+        'checked_counts' => ['image_alt' => 10, 'document_language' => 1, 'document_title' => 1, 'form_label' => 0, 'link_text' => 45],
+    ]);
+    Finding::factory()->for($audit)->create(['accessibility_rule' => AccessibilityRule::DocumentLanguage]);
+    Finding::factory()->count(4)->for($audit)->create(['accessibility_rule' => AccessibilityRule::LinkText]);
+    Finding::factory()->count(6)->for($audit)->create(['accessibility_rule' => AccessibilityRule::ImageAlt]);
+
+    $this->get(route('audits.show', $audit))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('audit.ruleSummaries', 5)
+            ->where('audit.ruleSummaries.0.accessibilityRule', 'image_alt')
+            ->where('audit.ruleSummaries.0.checkedCount', 10)
+            ->where('audit.ruleSummaries.0.findingCount', 6)
+            ->where('audit.ruleSummaries.0.result', 'failed')
+            ->where('audit.ruleSummaries.1.result', 'failed')
+            ->where('audit.ruleSummaries.1.summarySentence', 'Sprachangabe fehlt')
+            ->where('audit.ruleSummaries.2.result', 'passed')
+            ->where('audit.ruleSummaries.3.result', 'not_applicable')
+            ->where('audit.ruleSummaries.4.result', 'partial')
+            ->where('audit.ruleSummaries.4.summarySentence', '4 von 45 Links ohne Text'));
+});
+
+it('shows no rule summaries for an audit stored without checked counts', function () {
+    $audit = Audit::factory()->create(['status' => AuditStatus::Done]);
+
+    $this->get(route('audits.show', $audit))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('audit.ruleSummaries', null));
+});
+
 it('shows a running audit as not finished', function () {
     $audit = Audit::factory()->create(['status' => AuditStatus::Running]);
 
