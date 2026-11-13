@@ -151,7 +151,7 @@ it('ends as failed with the message of the failed fetch', function () {
         ->and($audit->error_message)->toBe('Diese Adresse zeigt auf ein internes Netz.');
 });
 
-it('ends as failed after an unexpected error', function () {
+it('ends as failed with a message to try again later after an unexpected error', function () {
     Http::fake(['example.com/*' => fn () => throw new RuntimeException('boom')]);
     $audit = Audit::factory()->create(['url' => 'https://example.com/']);
 
@@ -159,5 +159,5 @@ it('ends as failed after an unexpected error', function () {
 
     $audit->refresh();
     expect($audit->status)->toBe(AuditStatus::Failed)
-        ->and($audit->error_message)->toBe('Die Prüfung ist fehlgeschlagen.');
+        ->and($audit->error_message)->toBe('Beim Prüfen ist ein unerwarteter Fehler aufgetreten. Versuch es später noch einmal.');
 });
