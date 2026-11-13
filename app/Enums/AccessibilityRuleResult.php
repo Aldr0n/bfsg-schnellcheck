@@ -22,7 +22,7 @@ enum AccessibilityRuleResult: string
             return self::Passed;
         }
 
-        if ($checkedCount > 1 && $findingCount * 2 <= $checkedCount) {
+        if ($findingCount * 2 <= $checkedCount) {
             return self::Partial;
         }
 
