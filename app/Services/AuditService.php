@@ -39,11 +39,11 @@ class AuditService
             return;
         }
 
-        $findings = $this->accessibilityCheckService->findViolations($html);
+        $result = $this->accessibilityCheckService->checkHtml($html);
 
-        DB::transaction(function () use ($audit, $findings) {
-            $audit->findings()->saveMany($findings);
-            $audit->update(['status' => AuditStatus::Done]);
+        DB::transaction(function () use ($audit, $result) {
+            $audit->findings()->saveMany($result['findings']);
+            $audit->update(['status' => AuditStatus::Done, 'checked_counts' => $result['checkedCounts']]);
         });
     }
 
