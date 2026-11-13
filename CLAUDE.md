@@ -193,24 +193,18 @@ A column or table that goes away is dropped by the release after. In the first r
 
 ### Control flow
 
-Short transformations where you can see at a glance what comes out use collection methods (`map`, `filter`, `each`, `groupBy`, `pluck` and so on). Multi-step chains become a private method with a descriptive name that works with a simple `foreach` loop.
-
-Readable at a glance is, for example, a single `map` or `filter`. It becomes multi-step as soon as several steps are chained. This covers chains like `map` → `filter` → `unique` → `values` or `concat` → `map` → `map`, spreads like `[...$x, 'key' => …]` in the middle of a chain and anything you have to assemble in your head to see what is being built. Repeated parts, such as an array per entry, get their own small method. Code that is only renamed or moved during a refactoring is covered too.
+Collections are the first choice, also across several steps. Readability comes before brevity: one step per line, and what happens per element sits in a small method with a descriptive name instead of inside the closure. If you have to take a line apart in your head to see what comes out, it is too dense. A `foreach` loop is the exception. There are no hand-written counters or helper variables, the collection has `count()`, `sum()` or `filter()` for that.
 
 ```php
-// Wrong: you only see what comes out after assembling it in your head
-return collect([['id' => null, 'label' => 'Alle Meilensteine']])
-    ->concat($milestones->map(fn (Milestone $milestone): array => ['id' => $milestone->id, 'label' => $milestone->title]))
-    ->map(fn (array $filter): array => [...$filter, 'is_active' => $filter['id'] === $this->milestoneId]);
+$results = collect(AccessibilityRule::cases())
+    ->mapWithKeys(fn (AccessibilityRule $rule) => [
+        $rule->value => $this->checkRule($rule, $document),
+    ]);
 
-// Right: one loop and one small method per entry
-$filters = [$this->milestoneFilter(null, 'Alle Meilensteine')];
-
-foreach ($milestones as $milestone) {
-    $filters[] = $this->milestoneFilter($milestone->id, $milestone->title);
-}
-
-return collect($filters);
+return [
+    'findings' => $results->flatMap(fn (array $result) => $result['findings'])->all(),
+    'checkedCounts' => $results->map(fn (array $result) => $result['checkedCount'])->all(),
+];
 ```
 
 `&&` and `||` only appear in conditions, never as a replacement for `if`. So not `$slugs && Urls::syncSlugs(...)`, but an `if` block. This also applies to validation closures: prefer `function () use (...)` with `if` over `fn () => ... && $fail()`.
