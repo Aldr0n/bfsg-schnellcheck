@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 
 class AccessibilityCheckService
 {
-    private const MAX_STORED_FINDINGS_PER_RULE = 50;
+    private const MAX_STORED_FINDINGS_PER_RULE = 150;
 
     private const MAX_SNIPPET_LENGTH = 300;
 
