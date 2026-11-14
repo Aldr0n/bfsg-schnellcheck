@@ -41,8 +41,6 @@ The app fetches any URL a visitor enters, so `UrlFetchService` guards against se
 - The checked IP is pinned for every redirect hop by a Guzzle middleware.
 - At most five redirects, 10 seconds and 5 MB of uncompressed HTML.
 
-The check reads the HTML the server sends, without running JavaScript. It finds only some problems and is not a legal assessment.
-
 ## Getting started
 
 You need PHP 8.4, Composer and Node 22.
@@ -53,6 +51,38 @@ composer dev       # server, queue worker and Vite on http://localhost:8000
 composer ci:check  # lint, types, Pint, PHPStan and Pest, exactly as in CI
 ```
 
+## Architecture decisions
+
+- **Queue job** instead of a synchronous fetch. The report polls with Inertia's `usePoll`.
+- **`Dom\HTMLDocument`** from PHP 8.4 instead of a headless browser: a real HTML5 parser, no extra package, no Chrome on the server.
+- **Guzzle middleware** for the SSRF guard. Laravel's HTTP client follows redirects, the middleware checks every hop.
+- **ULIDs** instead of a login, so report links can be shared but not guessed.
+- **Services, repositories and backed enums** behind thin controllers.
+- **No overall score**, because five rules can't rate a whole site.
+
+## AI workflow
+
+No vibe coding here. When AI is used, it works within fixed rules, following established agentic coding patterns (→ [www.anthropic.com](https://www.anthropic.com/engineering/building-effective-agents)). Every change is specified, reviewed and merged by hand.
+
+- **Spec first:** every change is a GitHub issue with tasks and a definition of done.
+- **Context engineering:** [`CLAUDE.md`](CLAUDE.md) gives every agent the coding rules.
+- **Orchestrator–workers:** one agent plans, subagents implement.
+- **Human in the loop:** every pull request is reviewed and merged by hand.
+
+## Quality assurance
+
+- Pest feature tests for the business rules, stray HTTP requests fail the test.
+- PHPStan level 7, Pint, Vite+ and TypeScript in `composer ci:check` and CI.
+- Review of every pull request and one review of the whole codebase.
+- A browser check of every visible change.
+
+## Known limits
+
+- Only the HTML of one page, without JavaScript. Not a legal assessment.
+- Five rules and known false positives: `aria-hidden` containers, hidden fields, fields labeled only by `title`.
+- Pages in a non-UTF-8 charset can fail when a finding contains an umlaut.
+- Not deployed. SQLite and one queue worker.
+
 ## Built with
 
-Laravel 13, Inertia, React 19, Tailwind CSS 4 and shadcn/ui. Every change is an issue and a pull request, the code follows the rules in [`CLAUDE.md`](CLAUDE.md), and the project is built with Claude Code.
+Laravel 13, Inertia, React 19, Tailwind CSS 4 and shadcn/ui.
