@@ -38,6 +38,14 @@ it('rejects a response that is not html', function () {
         ->toThrow(UrlFetchException::class, 'Unter dieser Adresse liegt keine HTML-Seite.');
 });
 
+it('rejects a compressed response', function () {
+    $this->mock(DnsResolver::class)->shouldReceive('resolveIpAddresses')->andReturn(['93.184.215.14']);
+    Http::fake(['example.com/*' => Http::response('x', 200, ['Content-Type' => 'text/html', 'Content-Encoding' => 'gzip'])]);
+
+    expect(fn () => app(UrlFetchService::class)->fetchHtml('https://example.com/'))
+        ->toThrow(UrlFetchException::class, 'Die Seite kommt nur komprimiert und lässt sich nicht prüfen.');
+});
+
 it('rejects schemes other than http and https', function () {
     Http::fake();
 

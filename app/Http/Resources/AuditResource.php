@@ -5,7 +5,6 @@ namespace App\Http\Resources;
 use App\Enums\AccessibilityRule;
 use App\Enums\AccessibilityRuleResult;
 use App\Models\Audit;
-use App\Models\Finding;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -34,7 +33,7 @@ class AuditResource extends JsonResource
     /**
      * One summary per rule in case order, or null for audits without stored counts.
      *
-     * @return list<array<string, mixed>>|null
+     * @return array<int, array<string, mixed>>|null
      */
     private function ruleSummaries(): ?array
     {
@@ -42,21 +41,28 @@ class AuditResource extends JsonResource
             return null;
         }
 
-        $findingCounts = $this->findings->countBy(fn (Finding $finding) => $finding->accessibility_rule->value);
-        $summaries = [];
+        return collect(AccessibilityRule::cases())
+            ->map(fn (AccessibilityRule $rule) => $this->ruleSummary($rule))
+            ->all();
+    }
 
-        foreach (AccessibilityRule::cases() as $rule) {
-            $summaries[] = $this->ruleSummary($rule, $this->checked_counts[$rule->value] ?? 0, $findingCounts->get($rule->value, 0));
-        }
-
-        return $summaries;
+    /**
+     * The real number of findings of the rule. Audits stored before the counts existed only have their stored findings.
+     */
+    private function findingCount(AccessibilityRule $rule): int
+    {
+        return $this->finding_counts[$rule->value]
+            ?? $this->findings->where('accessibility_rule', $rule)->count();
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function ruleSummary(AccessibilityRule $rule, int $checkedCount, int $findingCount): array
+    private function ruleSummary(AccessibilityRule $rule): array
     {
+        $checkedCount = $this->checked_counts[$rule->value] ?? 0;
+        $findingCount = $this->findingCount($rule);
+
         return [
             'accessibilityRule' => $rule->value,
             'label' => $rule->label(),
@@ -68,31 +74,31 @@ class AuditResource extends JsonResource
     }
 
     /**
-     * @return list<array<string, mixed>>
+     * One group per rule with findings, in case order like the summaries.
+     *
+     * @return array<int, array<string, mixed>>
      */
     private function findingGroups(): array
     {
-        $groups = [];
-
-        foreach ($this->findings->groupBy('accessibility_rule') as $ruleFindings) {
-            $groups[] = $this->findingGroup($ruleFindings->first()->accessibility_rule, $ruleFindings->pluck('snippet')->all());
-        }
-
-        return $groups;
+        return collect(AccessibilityRule::cases())
+            ->filter(fn (AccessibilityRule $rule) => $this->findings->contains('accessibility_rule', $rule))
+            ->map(fn (AccessibilityRule $rule) => $this->findingGroup($rule))
+            ->values()
+            ->all();
     }
 
     /**
-     * @param  array<mixed>  $snippets
      * @return array<string, mixed>
      */
-    private function findingGroup(AccessibilityRule $rule, array $snippets): array
+    private function findingGroup(AccessibilityRule $rule): array
     {
         return [
             'accessibilityRule' => $rule->value,
             'label' => $rule->label(),
             'wcagCriteria' => $rule->wcagCriteria(),
             'explanation' => $rule->explanation(),
-            'snippets' => $snippets,
+            'findingCount' => $this->findingCount($rule),
+            'snippets' => $this->findings->where('accessibility_rule', $rule)->pluck('snippet')->all(),
         ];
     }
 }

@@ -5,9 +5,13 @@ const COLLAPSED_SNIPPET_COUNT = 5;
 
 type FindingSnippetsProps = {
     snippets: string[];
+    findingCount: number;
 };
 
-export function FindingSnippets({ snippets }: FindingSnippetsProps) {
+export function FindingSnippets({
+    snippets,
+    findingCount,
+}: FindingSnippetsProps) {
     const listId = useId();
     const [isExpanded, setIsExpanded] = useState(false);
 
@@ -15,6 +19,7 @@ export function FindingSnippets({ snippets }: FindingSnippetsProps) {
     const visibleSnippets = isExpanded
         ? snippets
         : snippets.slice(0, COLLAPSED_SNIPPET_COUNT);
+    const hasUnstoredFindings = findingCount > snippets.length;
 
     return (
         <div className="flex flex-col gap-2">
@@ -30,6 +35,12 @@ export function FindingSnippets({ snippets }: FindingSnippetsProps) {
                     </li>
                 ))}
             </ul>
+            {hasUnstoredFindings && (
+                <p className="text-sm text-muted-foreground">
+                    Der Bericht zeigt die ersten {snippets.length} von{' '}
+                    {findingCount} Funden.
+                </p>
+            )}
             {hasMoreSnippets && (
                 <Button
                     type="button"

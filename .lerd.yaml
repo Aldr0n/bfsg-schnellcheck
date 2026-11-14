@@ -1,2 +1,10 @@
 php_version: "8.4"
 secured: true
+workers:
+  - queue-listen
+  - vite
+custom_workers:
+  queue-listen:
+    command: php artisan queue:listen --tries=1
+    conflicts_with:
+      - queue
