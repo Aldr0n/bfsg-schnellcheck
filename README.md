@@ -26,13 +26,13 @@ It is deliberately small. Five rules, one page, no login. Each rule is easy to e
 
 ## What it checks
 
-| Rule | What fails | WCAG |
-|---|---|---|
-| Alternativtext | An image without an `alt` attribute. Images with `aria-hidden="true"`, `role="presentation"` or `role="none"` are skipped. | 1.1.1 |
-| Sprache der Seite | `<html>` without a `lang` attribute, or with an empty one. | 3.1.1 |
-| Seitentitel | A missing or empty `<title>`. | 2.4.2 |
-| Feldbeschriftung | An `input`, `select` or `textarea` without a `<label>`, `aria-label` or `aria-labelledby`. Hidden inputs and buttons are skipped. | 1.3.1, 4.1.2 |
-| Linktext | A link (`a[href]`) without text, `aria-label`, `aria-labelledby`, `title`, or an image or icon with a name. | 2.4.4, 4.1.2 |
+| Rule              | What fails                                                                                                                        | WCAG         |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| Alternativtext    | An image without an `alt` attribute. Images with `aria-hidden="true"`, `role="presentation"` or `role="none"` are skipped.        | 1.1.1        |
+| Sprache der Seite | `<html>` without a `lang` attribute, or with an empty one.                                                                        | 3.1.1        |
+| Seitentitel       | A missing or empty `<title>`.                                                                                                     | 2.4.2        |
+| Feldbeschriftung  | An `input`, `select` or `textarea` without a `<label>`, `aria-label` or `aria-labelledby`. Hidden inputs and buttons are skipped. | 1.3.1, 4.1.2 |
+| Linktext          | A link (`a[href]`) without text, `aria-label`, `aria-labelledby`, `title`, or an image or icon with a name.                       | 2.4.4, 4.1.2 |
 
 Above the findings, one ring per rule shows the share of checked elements that pass, with a sentence such as "4 von 45 Links ohne Text". Language and title exist once per page, so their ring shows a check or a cross. There is no overall score on purpose: five rules can't tell how accessible a site is.
 
