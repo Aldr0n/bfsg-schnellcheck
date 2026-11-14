@@ -141,9 +141,9 @@ it('stores how many elements each rule checked', function () {
     ]);
 });
 
-it('stores at most 50 findings per rule but counts all of them', function () {
+it('stores at most 150 findings per rule but counts all of them', function () {
     $html = '<!doctype html><html lang="de"><head><title>Start</title></head><body>'
-        .str_repeat('<img src="a.png">', 60)
+        .str_repeat('<img src="a.png">', 210)
         .'</body></html>';
     Http::fake(['example.com/*' => Http::response($html, 200, ['Content-Type' => 'text/html'])]);
     $audit = Audit::factory()->create(['url' => 'https://example.com/']);
@@ -151,8 +151,8 @@ it('stores at most 50 findings per rule but counts all of them', function () {
     RunAudit::dispatchSync($audit);
 
     $audit->refresh();
-    expect($audit->findings)->toHaveCount(50)
-        ->and($audit->finding_counts['image_alt'])->toBe(60);
+    expect($audit->findings)->toHaveCount(150)
+        ->and($audit->finding_counts['image_alt'])->toBe(210);
 });
 
 it('ends as failed with the message of the failed fetch', function () {
