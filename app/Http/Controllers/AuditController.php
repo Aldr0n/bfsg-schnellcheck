@@ -25,7 +25,7 @@ class AuditController extends Controller
     public function show(Audit $audit): Response
     {
         return Inertia::render('audits/show', [
-            'audit' => new AuditResource($this->auditRepository->auditWithFindingsByRule($audit)),
+            'audit' => new AuditResource($this->auditRepository->auditWithFindings($audit)),
         ]);
     }
 }

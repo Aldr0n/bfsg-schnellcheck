@@ -35,8 +35,11 @@ class UrlFetchService
             // The middleware sits below Guzzle's redirect handling, so it runs for every hop.
             $response = Http::withMiddleware($this->pinPublicIpAddressMiddleware())
                 ->timeout(self::TIMEOUT_SECONDS)
+                ->withHeaders(['Accept-Encoding' => 'identity'])
                 ->withOptions([
                     'allow_redirects' => ['max' => self::MAX_REDIRECTS],
+                    // The size limit counts bytes on the wire, so a compressed response must not be decoded.
+                    'decode_content' => false,
                     // Guzzle does not allow CURLOPT_MAXFILESIZE_LARGE, so the limit is enforced here.
                     'progress' => function (int $downloadTotal, int $downloadedBytes) {
                         if ($downloadTotal > self::MAX_BODY_BYTES || $downloadedBytes > self::MAX_BODY_BYTES) {
@@ -54,6 +57,12 @@ class UrlFetchService
 
         if (! $response->successful()) {
             throw new UrlFetchException("Die Seite antwortet mit Status {$response->status()}.");
+        }
+
+        $contentEncoding = Str::lower(trim($response->header('Content-Encoding')));
+
+        if (! in_array($contentEncoding, ['', 'identity'], true)) {
+            throw new UrlFetchException('Die Seite kommt nur komprimiert und lässt sich nicht prüfen.');
         }
 
         $mediaType = Str::lower(trim(Str::before($response->header('Content-Type'), ';')));

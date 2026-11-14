@@ -3,6 +3,7 @@ export type FindingGroup = {
     label: string;
     wcagCriteria: string[];
     explanation: string;
+    findingCount: number;
     snippets: string[];
 };
 
