@@ -54,11 +54,11 @@ composer ci:check  # lint, types, Pint, PHPStan and Pest, exactly as in CI
 ## Architecture decisions
 
 - **Queue job** instead of a synchronous fetch. The report polls with Inertia's `usePoll`.
-- **`Dom\HTMLDocument`** from PHP 8.4 instead of a headless browser: a real HTML5 parser, no extra package, no Chrome on the server.
-- **Guzzle middleware** for the SSRF guard. Laravel's HTTP client follows redirects, the middleware checks every hop.
-- **ULIDs** instead of a login, so report links can be shared but not guessed.
+- **`Dom\HTMLDocument`** from PHP 8.4 instead of a headless browser: a real HTML5 parser, no extra packages like a headless Chrome.
+- **Guzzle middleware** for the SSRF guard. Laravel's HTTP client follows redirects, then a middleware checks every hop.
+- **ULIDs** instead of a login, so report links can be shared, without enabling guessing of id`s.
 - **Services, repositories and backed enums** behind thin controllers.
-- **No overall score**, because five rules can't rate a whole site.
+- **No overall score**, because five rules can't reflect a whole sites BFSG score.
 
 ## AI workflow
 
@@ -71,14 +71,13 @@ No vibe coding here. When AI is used, it works within fixed rules, following est
 
 ## Quality assurance
 
-- Pest feature tests for the business rules, stray HTTP requests fail the test.
+- Pest feature tests for business logic.
 - PHPStan level 7, Pint, Vite+ and TypeScript in `composer ci:check` and CI.
-- Review of every pull request and one review of the whole codebase.
 - A browser check of every visible change.
 
 ## Known limits
 
-- Only the HTML of one page, without JavaScript. Not a legal assessment.
+- Only the HTML of one page, without JavaScript. This tool does not represent a legal assessment.
 - Five rules and known false positives: `aria-hidden` containers, hidden fields, fields labeled only by `title`.
 - Pages in a non-UTF-8 charset can fail when a finding contains an umlaut.
 - Not deployed. SQLite and one queue worker.
