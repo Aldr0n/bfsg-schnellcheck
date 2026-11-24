@@ -23,10 +23,12 @@ export type RuleSummary = {
 };
 
 export type Audit = {
+    id: string;
     url: string;
     statusLabel: string;
     errorMessage: string | null;
     isFinished: boolean;
+    isCancelled: boolean;
     findingGroups: FindingGroup[];
     ruleSummaries: RuleSummary[] | null;
 };

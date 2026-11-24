@@ -1,5 +1,6 @@
-import { Head, Link } from '@inertiajs/react';
+import { Form, Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
+import { cancel } from '@/actions/App/Http/Controllers/AuditController';
 import { AuditPoller } from '@/components/audit-poller';
 import { FindingSnippets } from '@/components/finding-snippets';
 import { RuleRings } from '@/components/rule-rings';
@@ -25,8 +26,10 @@ function statusText(audit: Audit): string {
         return 'Die Seite wird geprüft …';
     }
 
-    // A failed audit is announced by the alert, which has role="alert" itself.
-    return audit.errorMessage ? '' : 'Die Prüfung ist fertig.';
+    // A failed or cancelled audit is announced by its alert, which has role="alert" itself.
+    return audit.errorMessage || audit.isCancelled
+        ? ''
+        : 'Die Prüfung ist fertig.';
 }
 
 function findingGroupId(accessibilityRule: string): string {
@@ -87,74 +90,104 @@ export default function Show({ audit }: Props) {
                     </Alert>
                 )}
 
-                {audit.isFinished && !audit.errorMessage && (
-                    <>
-                        {audit.ruleSummaries !== null && (
-                            <RuleRings
-                                ruleSummaries={audit.ruleSummaries}
-                                onShowFindings={showFindings}
-                            />
-                        )}
-
-                        <section
-                            aria-labelledby="findings-heading"
-                            className="flex flex-col gap-4"
-                        >
-                            <h2
-                                id="findings-heading"
-                                className="text-xl font-semibold"
+                {!audit.isFinished && (
+                    <Form {...cancel.form(audit)}>
+                        {({ processing }) => (
+                            <Button
+                                type="submit"
+                                variant="outline"
+                                disabled={processing}
                             >
-                                Funde
-                            </h2>
-                            {audit.findingGroups.length === 0 ? (
-                                <p>Die fünf Regeln haben nichts gefunden.</p>
-                            ) : (
-                                <Accordion
-                                    type="multiple"
-                                    value={openRules}
-                                    onValueChange={setOpenRules}
-                                >
-                                    {audit.findingGroups.map((group) => (
-                                        <AccordionItem
-                                            key={group.accessibilityRule}
-                                            id={findingGroupId(
-                                                group.accessibilityRule,
-                                            )}
-                                            value={group.accessibilityRule}
-                                        >
-                                            <AccordionTrigger>
-                                                <span className="flex items-center gap-2">
-                                                    {group.label}
-                                                    <Badge variant="outline">
-                                                        {group.findingCount ===
-                                                        1
-                                                            ? '1 Fund'
-                                                            : `${group.findingCount} Funde`}
-                                                    </Badge>
-                                                </span>
-                                            </AccordionTrigger>
-                                            <AccordionContent className="flex flex-col gap-3">
-                                                <p className="text-muted-foreground">
-                                                    WCAG{' '}
-                                                    {group.wcagCriteria.join(
-                                                        ', ',
-                                                    )}
-                                                </p>
-                                                <p>{group.explanation}</p>
-                                                <FindingSnippets
-                                                    snippets={group.snippets}
-                                                    findingCount={
-                                                        group.findingCount
-                                                    }
-                                                />
-                                            </AccordionContent>
-                                        </AccordionItem>
-                                    ))}
-                                </Accordion>
-                            )}
-                        </section>
-                    </>
+                                Prüfung abbrechen
+                            </Button>
+                        )}
+                    </Form>
                 )}
+
+                {audit.isCancelled && (
+                    <Alert>
+                        <AlertTitle>Die Prüfung wurde abgebrochen</AlertTitle>
+                        <AlertDescription>
+                            Es gibt keinen Bericht für diese Seite. Du kannst
+                            eine neue Prüfung starten.
+                        </AlertDescription>
+                    </Alert>
+                )}
+
+                {audit.isFinished &&
+                    !audit.errorMessage &&
+                    !audit.isCancelled && (
+                        <>
+                            {audit.ruleSummaries !== null && (
+                                <RuleRings
+                                    ruleSummaries={audit.ruleSummaries}
+                                    onShowFindings={showFindings}
+                                />
+                            )}
+
+                            <section
+                                aria-labelledby="findings-heading"
+                                className="flex flex-col gap-4"
+                            >
+                                <h2
+                                    id="findings-heading"
+                                    className="text-xl font-semibold"
+                                >
+                                    Funde
+                                </h2>
+                                {audit.findingGroups.length === 0 ? (
+                                    <p>
+                                        Die fünf Regeln haben nichts gefunden.
+                                    </p>
+                                ) : (
+                                    <Accordion
+                                        type="multiple"
+                                        value={openRules}
+                                        onValueChange={setOpenRules}
+                                    >
+                                        {audit.findingGroups.map((group) => (
+                                            <AccordionItem
+                                                key={group.accessibilityRule}
+                                                id={findingGroupId(
+                                                    group.accessibilityRule,
+                                                )}
+                                                value={group.accessibilityRule}
+                                            >
+                                                <AccordionTrigger>
+                                                    <span className="flex items-center gap-2">
+                                                        {group.label}
+                                                        <Badge variant="outline">
+                                                            {group.findingCount ===
+                                                            1
+                                                                ? '1 Fund'
+                                                                : `${group.findingCount} Funde`}
+                                                        </Badge>
+                                                    </span>
+                                                </AccordionTrigger>
+                                                <AccordionContent className="flex flex-col gap-3">
+                                                    <p className="text-muted-foreground">
+                                                        WCAG{' '}
+                                                        {group.wcagCriteria.join(
+                                                            ', ',
+                                                        )}
+                                                    </p>
+                                                    <p>{group.explanation}</p>
+                                                    <FindingSnippets
+                                                        snippets={
+                                                            group.snippets
+                                                        }
+                                                        findingCount={
+                                                            group.findingCount
+                                                        }
+                                                    />
+                                                </AccordionContent>
+                                            </AccordionItem>
+                                        ))}
+                                    </Accordion>
+                                )}
+                            </section>
+                        </>
+                    )}
 
                 <div>
                     <Button asChild variant="outline">
