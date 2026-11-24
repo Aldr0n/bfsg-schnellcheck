@@ -40,7 +40,7 @@ class AuditService
             return;
         }
 
-        if (! $this->waitsOutStartDelay($audit)) {
+        if (! $this->hasWaitedOutStartDelay($audit)) {
             return;
         }
 
@@ -89,7 +89,7 @@ class AuditService
      * Waits one second at a time and returns false as soon as the audit is cancelled. The wait keeps the running
      * state visible long enough to cancel.
      */
-    private function waitsOutStartDelay(Audit $audit): bool
+    private function hasWaitedOutStartDelay(Audit $audit): bool
     {
         for ($second = 0; $second < self::START_DELAY_SECONDS; $second++) {
             Sleep::for(1)->second();
