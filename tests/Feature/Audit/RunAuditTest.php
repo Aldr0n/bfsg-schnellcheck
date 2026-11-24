@@ -184,7 +184,6 @@ it('waits 30 seconds in one-second steps before it fetches the page', function (
 
     RunAudit::dispatchSync($audit);
 
-    Sleep::assertSleptTimes(30);
     Sleep::assertSequence(array_fill(0, 30, Sleep::for(1)->second()));
 });
 

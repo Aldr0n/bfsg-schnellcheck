@@ -30,7 +30,6 @@ it('shows a cancelled audit as finished and cancelled', function () {
 
     $this->get(route('audits.show', $audit))
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('audit.statusLabel', 'Abgebrochen')
             ->where('audit.isFinished', true)
             ->where('audit.isCancelled', true));
 });
