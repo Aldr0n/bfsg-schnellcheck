@@ -22,6 +22,13 @@ class AuditController extends Controller
         return redirect()->route('audits.show', $audit);
     }
 
+    public function cancel(Audit $audit): RedirectResponse
+    {
+        $this->auditService->cancel($audit);
+
+        return redirect()->route('audits.show', $audit);
+    }
+
     public function show(Audit $audit): Response
     {
         return Inertia::render('audits/show', [

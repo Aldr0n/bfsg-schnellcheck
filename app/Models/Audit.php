@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Enums\AuditStatus;
 use Database\Factories\AuditFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -35,6 +37,17 @@ class Audit extends Model
     public function findings(): HasMany
     {
         return $this->hasMany(Finding::class);
+    }
+
+    /**
+     * Audits that are still pending or running.
+     *
+     * @param  Builder<Audit>  $query
+     */
+    #[Scope]
+    protected function unfinished(Builder $query): void
+    {
+        $query->whereNotIn('status', AuditStatus::finishedCases());
     }
 
     /**

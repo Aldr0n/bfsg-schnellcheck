@@ -6,6 +6,7 @@ use App\Jobs\RunAudit;
 use App\Models\Audit;
 use App\Support\DnsResolver;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Sleep;
 
 dataset('html with one violation', [
     'image without alt' => [
@@ -94,6 +95,7 @@ dataset('html without violations', [
 ]);
 
 beforeEach(function () {
+    Sleep::fake();
     $this->mock(DnsResolver::class)->shouldReceive('resolveIpAddresses')->andReturn(['93.184.215.14']);
 });
 
@@ -174,4 +176,60 @@ it('ends as failed with a message to try again later after an unexpected error',
     $audit->refresh();
     expect($audit->status)->toBe(AuditStatus::Failed)
         ->and($audit->error_message)->toBe('Beim Prüfen ist ein unerwarteter Fehler aufgetreten. Versuch es später noch einmal.');
+});
+
+it('waits 30 seconds in one-second steps before it fetches the page', function () {
+    Http::fake(['example.com/*' => Http::response('<!doctype html><html lang="de"><head><title>Start</title></head><body></body></html>', 200, ['Content-Type' => 'text/html'])]);
+    $audit = Audit::factory()->create(['url' => 'https://example.com/']);
+
+    RunAudit::dispatchSync($audit);
+
+    Sleep::assertSleptTimes(30);
+    Sleep::assertSequence(array_fill(0, 30, Sleep::for(1)->second()));
+});
+
+it('does nothing for an audit that was cancelled before it started', function () {
+    Http::fake();
+    $audit = Audit::factory()->create(['status' => AuditStatus::Cancelled]);
+
+    RunAudit::dispatchSync($audit);
+
+    Sleep::assertNeverSlept();
+    Http::assertNothingSent();
+    expect($audit->refresh()->status)->toBe(AuditStatus::Cancelled);
+});
+
+it('stops waiting when the audit is cancelled and saves no findings', function () {
+    Http::fake();
+    $audit = Audit::factory()->create(['url' => 'https://example.com/']);
+    $sleeps = 0;
+    Sleep::whenFakingSleep(function () use ($audit, &$sleeps) {
+        if (++$sleeps === 3) {
+            Audit::whereKey($audit->getKey())->update(['status' => AuditStatus::Cancelled]);
+        }
+    });
+
+    RunAudit::dispatchSync($audit);
+
+    Sleep::assertSleptTimes(3);
+    Http::assertNothingSent();
+    $audit->refresh();
+    expect($audit->status)->toBe(AuditStatus::Cancelled)
+        ->and($audit->findings)->toBeEmpty();
+});
+
+it('keeps a cancelled audit cancelled when the cancel comes in while the page is fetched', function () {
+    $html = '<!doctype html><html><head></head><body><img src="a.png"></body></html>';
+    $audit = Audit::factory()->create(['url' => 'https://example.com/']);
+    Http::fake(['example.com/*' => function () use ($audit, $html) {
+        Audit::whereKey($audit->getKey())->update(['status' => AuditStatus::Cancelled]);
+
+        return Http::response($html, 200, ['Content-Type' => 'text/html']);
+    }]);
+
+    RunAudit::dispatchSync($audit);
+
+    $audit->refresh();
+    expect($audit->status)->toBe(AuditStatus::Cancelled)
+        ->and($audit->findings)->toBeEmpty();
 });

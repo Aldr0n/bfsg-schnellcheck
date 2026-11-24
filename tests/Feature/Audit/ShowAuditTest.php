@@ -25,6 +25,16 @@ it('shows the findings of a finished audit grouped by rule', function () {
             ->where('audit.findingGroups.1.wcagCriteria', ['2.4.4', '4.1.2']));
 });
 
+it('shows a cancelled audit as finished and cancelled', function () {
+    $audit = Audit::factory()->create(['status' => AuditStatus::Cancelled]);
+
+    $this->get(route('audits.show', $audit))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('audit.statusLabel', 'Abgebrochen')
+            ->where('audit.isFinished', true)
+            ->where('audit.isCancelled', true));
+});
+
 it('lists the findings in the order of the rules', function () {
     $audit = Audit::factory()->create(['status' => AuditStatus::Done]);
     Finding::factory()->for($audit)->create(['accessibility_rule' => AccessibilityRule::DocumentLanguage]);
