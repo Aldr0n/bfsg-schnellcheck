@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Enums\AccessibilityRule;
 use App\Enums\AccessibilityRuleResult;
+use App\Enums\AuditStatus;
 use App\Models\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -21,10 +22,12 @@ class AuditResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
+            'id' => $this->id,
             'url' => $this->url,
             'statusLabel' => $this->status->label(),
             'errorMessage' => $this->error_message,
             'isFinished' => $this->status->isFinished(),
+            'isCancelled' => $this->status === AuditStatus::Cancelled,
             'findingGroups' => $this->whenLoaded('findings', fn () => $this->findingGroups()),
             'ruleSummaries' => $this->whenLoaded('findings', fn () => $this->ruleSummaries()),
         ];

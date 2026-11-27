@@ -1,5 +1,6 @@
-import { Head, Link } from '@inertiajs/react';
+import { Form, Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
+import { cancel } from '@/actions/App/Http/Controllers/AuditController';
 import { AuditPoller } from '@/components/audit-poller';
 import { FindingSnippets } from '@/components/finding-snippets';
 import { RuleRings } from '@/components/rule-rings';
@@ -25,8 +26,12 @@ function statusText(audit: Audit): string {
         return 'Die Seite wird geprüft …';
     }
 
-    // A failed audit is announced by the alert, which has role="alert" itself.
-    return audit.errorMessage ? '' : 'Die Prüfung ist fertig.';
+    return hasReport(audit) ? 'Die Prüfung ist fertig.' : '';
+}
+
+// A failed or cancelled audit has no report. Its alert announces it, because the alert has role="alert" itself.
+function hasReport(audit: Audit): boolean {
+    return audit.isFinished && !audit.errorMessage && !audit.isCancelled;
 }
 
 function findingGroupId(accessibilityRule: string): string {
@@ -87,7 +92,31 @@ export default function Show({ audit }: Props) {
                     </Alert>
                 )}
 
-                {audit.isFinished && !audit.errorMessage && (
+                {!audit.isFinished && (
+                    <Form {...cancel.form(audit)}>
+                        {({ processing }) => (
+                            <Button
+                                type="submit"
+                                variant="outline"
+                                disabled={processing}
+                            >
+                                Prüfung abbrechen
+                            </Button>
+                        )}
+                    </Form>
+                )}
+
+                {audit.isCancelled && (
+                    <Alert>
+                        <AlertTitle>Die Prüfung wurde abgebrochen</AlertTitle>
+                        <AlertDescription>
+                            Es gibt keinen Bericht für diese Seite. Du kannst
+                            eine neue Prüfung starten.
+                        </AlertDescription>
+                    </Alert>
+                )}
+
+                {hasReport(audit) && (
                     <>
                         {audit.ruleSummaries !== null && (
                             <RuleRings
